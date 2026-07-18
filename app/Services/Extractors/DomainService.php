@@ -11,7 +11,11 @@ class DomainService implements ExtractorInterface
     {
         $response = Http::timeout(10)->get("https://rdap.org/domain/{$input}");
 
-        $data = $response->json();
+        $data = $response->json() ?? [];
+
+        if (empty($data)) {
+            throw new \Exception("Domain not found or invalid: {$input}");
+        }
 
         return[
             'domain'         => $data['ldhName'] ?? $input,
