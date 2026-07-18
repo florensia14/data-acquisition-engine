@@ -24,13 +24,13 @@ class DomainController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $result,
+                'data'    => $result,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to extract domain information',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 422);
         }
     }

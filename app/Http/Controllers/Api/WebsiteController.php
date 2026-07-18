@@ -24,7 +24,7 @@ class WebsiteController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $result,
+                'data'    => $result,
             ]);
         } catch (\Exception $e){
             return response()->json([
