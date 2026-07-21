@@ -1,58 +1,273 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Data Acquisition Engine
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+REST API sederhana pakai Laravel buat ngumpulin info perusahaan dari 3 sumber: metadata website, data domain (RDAP), dan lokasi (OpenStreetMap). Dibuat untuk Technical Challenge PKL di Berani Digital ID.
 
-## About Laravel
+## Struktur Project
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Saya pakai pola Service Layer, jadi logic-nya dipisah dari Controller. Alasannya biar tiap connector bisa di test sendiri-sendiri tanpa harus lewat HTTP request dulu (saya test semua Service pakai `php artisan tinker` sebelum bikin endpoint-nya).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+app/
+├── Http/Controllers/Api/
+│   ├── WebsiteController.php
+│   ├── DomainController.php
+│   ├── LocationController.php
+│   └── CompanyInformationController.php
+├── Services/
+│   ├── Contracts/
+│   │   └── ExtractorInterface.php
+│   ├── Extractors/
+│   │   ├── WebsiteService.php
+│   │   ├── DomainService.php
+│   │   └── LocationService.php
+│   └── CompanyInformationService.php
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+`ExtractorInterface` itu contract yang bikin semua connector punya method `extract()` yang sama, jadi kalau nanti mau nambah connector baru tinggal ikutin pola yang sama.
 
-## Contributing
+Untuk endpoint integrasi (`/company-information`), saya pakai pendekatan partial failure — kalau salah satu connector gagal (misal website-nya down), yang lain tetap jalan dan hasilnya tetap ditampilkan. Jadi tiap bagian response punya status `success` sendiri-sendiri.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Yang dibutuhkan
 
-## Code of Conduct
+- PHP 8.4+
+- Composer 2.x
+- Extension PHP: `pdo_sqlite`, `sqlite3`, `curl`, `openssl`
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Cara install
 
-## Security Vulnerabilities
+```bash
+git clone https://github.com/florensia14/data-acquisition-engine.git
+cd data-acquisition-engine
+composer install
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Salin file environment:
+```bash
+# Windows (PowerShell)
+copy .env.example .env
 
-## License
+# Linux/Mac
+cp .env.example .env
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan key:generate
+```
+
+Bikin file database SQLite:
+```bash
+# Windows (PowerShell)
+New-Item -ItemType File -Path database\database.sqlite -Force
+
+# Linux/Mac
+touch database/database.sqlite
+```
+
+Jalankan migration:
+```bash
+php artisan migrate
+```
+
+## Konfigurasi
+
+Database pakai SQLite, tapi cuma buat kebutuhan internal Laravel (session, cache, queue), bukan buat nyimpen data hasil scraping. Setting default di `.env` udah pas:
+
+```env
+DB_CONNECTION=sqlite
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+```
+
+Nggak ada API key yang dibutuhin karena RDAP dan Nominatim itu public API, nggak perlu auth.
+
+**Kalau pakai Windows** dan kena error `SSL certificate problem` waktu request ke luar, ini karena PHP di Windows nggak otomatis punya sertifikat CA. Solusinya download [cacert.pem](https://curl.se/ca/cacert.pem), terus di `php.ini` tambahin:
+
+```ini
+curl.cainfo = "C:\path\ke\cacert.pem"
+openssl.cafile = "C:\path\ke\cacert.pem"
+```
+
+Ini kendala yang saya alami sendiri pas development di laptop Windows, jadi saya masukin ke sini biar yang mau jalanin di Windows juga nggak stuck lama kayak saya kemarin.
+
+## Jalanin aplikasinya
+
+```bash
+php artisan serve
+```
+
+Nanti jalan di `http://127.0.0.1:8000`
+
+## Endpoint
+
+Base URL: `http://127.0.0.1:8000/api`
+
+### POST /extract/website
+
+Ambil metadata dari sebuah website.
+
+Body:
+```json
+{
+  "url": "https://paper.id"
+}
+```
+
+Response kalau berhasil:
+```json
+{
+  "success": true,
+  "data": {
+    "url": "https://paper.id",
+    "title": "Kelola Invoice & Pembayaran Bisnis Anda Secara Digital, Simple & Otomatis",
+    "description": "...",
+    "canonical": "https://www.paper.id/",
+    "favicon": "https://paper.id/favicon-light.svg",
+    "emails": ["support@paper.id"],
+    "phones": ["6285219526186"],
+    "social_media": ["https://www.instagram.com/paperindonesia/"],
+    "open_graph": {
+      "title": "...",
+      "description": "...",
+      "image": "..."
+    }
+  }
+}
+```
+
+Response kalau gagal:
+```json
+{
+  "success": false,
+  "message": "Failed to extract website metadata",
+  "error": "cURL error 6: Could not resolve host: ..."
+}
+```
+
+### POST /extract/domain
+
+Ambil data registrasi domain lewat RDAP.
+
+Body:
+```json
+{
+  "domain": "paper.id"
+}
+```
+
+Response kalau berhasil:
+```json
+{
+  "success": true,
+  "data": {
+    "domain": "PAPER.ID",
+    "registrar": "PT Jagat Informasi Solusi",
+    "registered_at": "2014-08-15T11:00:45Z",
+    "expired_at": "2030-08-15T23:59:59Z",
+    "last_updated": "2025-09-29T01:03:31Z",
+    "status": ["active"],
+    "nameservers": ["jeremy.ns.cloudflare.com", "magali.ns.cloudflare.com"]
+  }
+}
+```
+
+Response kalau gagal (domain nggak ketemu):
+```json
+{
+  "success": false,
+  "message": "Failed to extract domain information",
+  "error": "Domain not found or invalid: domain-tidak-ada.com"
+}
+```
+
+### POST /extract/location
+
+Cari lokasi perusahaan pakai Nominatim.
+
+Body:
+```json
+{
+  "query": "PT Telkom Indonesia"
+}
+```
+
+Response kalau berhasil:
+```json
+{
+  "success": true,
+  "data": {
+    "display_name": "PT Telkom Indonesia, Jalan Gelong Baru Utara, ...",
+    "latitude": "-6.1751004",
+    "longitude": "106.7932787",
+    "importance": 0.0000831,
+    "osm_type": "way",
+    "address": {
+      "road": "Jalan Gelong Baru Utara",
+      "city": "Jakarta Barat",
+      "postcode": "11440",
+      "country": "Indonesia"
+    }
+  }
+}
+```
+
+Response kalau gagal:
+```json
+{
+  "success": false,
+  "message": "Failed to extract location information",
+  "error": "Location not found for: query-tidak-jelas"
+}
+```
+
+### GET /company-information?domain=paper.id
+
+Endpoint integrasi, gabungin hasil dari 3 connector di atas.
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "website": {
+      "success": true,
+      "data": { "...": "..." }
+    },
+    "domain": {
+      "success": true,
+      "data": { "...": "..." }
+    },
+    "location": {
+      "success": true,
+      "data": { "...": "..." }
+    }
+  }
+}
+```
+
+Kalau salah satu gagal, bagian itu aja yang nunjukin error, yang lain tetap tampil normal:
+```json
+"location": {
+  "success": false,
+  "data": null,
+  "error": "Location not found for: nama-yang-tidak-ditemukan"
+}
+```
+
+## Asumsi & kendala yang saya temuin
+
+**Soal pencarian lokasi di endpoint integrasi** ini yang paling tricky. Endpoint `/company-information` cuma nerima parameter `domain`, tapi Nominatim itu butuh nama entitas buat nyari lokasi yang akurat, bukan domain. Jadi saya pakai nama registrar dari hasil RDAP dulu buat query lokasi, kalau itu gagal baru fallback pakai nama domainnya langsung.
+
+Masalahnya, ini nggak selalu akurat. Registrar itu perusahaan penyedia jasa domain, bukan berarti itu alamat kantor asli si pemilik domain. Dan kalau fallback ke nama domain, kadang hasilnya ngaco contohnya waktu saya test pakai `paper.id`, fallback-nya malah nemu "Paper Mills" (pabrik kertas) karena sama-sama ada kata "paper". Ini keterbatasan yang saya sadari, tapi belum ketemu cara yang lebih baik dalam waktu pengerjaan yang ada.
+
+**Ketergantungan ke API luar** — ketiga connector semuanya manggil layanan eksternal yang saya nggak bisa kontrol. Kalau website target down, domain nggak kedaftar, atau nama nggak ketemu di Nominatim, ya otomatis gagal. Saya coba tangani semua ini biar responnya tetap konsisten (JSON rapi, bukan error 500 mentah).
+
+**Nominatim wajib User-Agent** — awalnya saya nggak tau ini, requestnya ditolak. Ternyata Nominatim emang mewajibkan header User-Agent di setiap request sebagai bagian dari kebijakan mereka. Udah saya tambahin di `LocationService`.
+
+**Kendala SSL di Windows** udah saya jelasin di bagian konfigurasi di atas, ini yang paling lama saya debug pas awal-awal development.
+
+## Teknologi
+
+- Laravel 13
+- Symfony DomCrawler (buat parsing HTML metadata website)
+- SQLite (cuma buat session/cache/queue bawaan Laravel)
