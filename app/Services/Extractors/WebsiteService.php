@@ -3,33 +3,58 @@
 namespace App\Services\Extractors;
 
 use App\Services\Contracts\ExtractorInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 
 class WebsiteService implements ExtractorInterface
 {
+    private const CACHE_TTL = 3600;
+
     public function extract(string $input): array
     {
-        $response = Http::timeout(10)->get($input);
+        $cacheKey = 'website:' . md5($input);
 
-        $html = $response->body();
-        $crawler = new Crawler($html);
+        if (Cache::has($cacheKey)) {
+            Log::info('WebsiteService: cache hit', ['url' => $input]);
+            return Cache::get($cacheKey);
+        }
 
-        return [
-            'url' => $input,
-            'title' => $this->getTitle($crawler),
-            'description' => $this->getMetaContent($crawler, 'description'),
-            'canonical' => $this->getCanonical($crawler),
-            'favicon' => $this->getFavicon($crawler, $input),
-            'emails' => $this->findEmails($html),
-            'phones' => $this->findPhones($html),
-            'social_media' => $this->findSocialMedia($crawler),
-            'open_graph' => [
-                'title' => $this->getMetaContent($crawler, 'og:title', 'property'),
-                'description' => $this->getMetaContent($crawler, 'og:description', 'property'),
-                'image' => $this->getMetaContent($crawler, 'og:image', 'property'),
-            ],
-        ];
+        Log::info('WebsiteService: fetching website', ['url' => $input]);
+
+        try {
+            $response = Http::timeout(10)->get($input);
+            $html = $response->body();
+            $crawler = new Crawler($html);
+
+            $result = [
+                'url' => $input,
+                'title' => $this->getTitle($crawler),
+                'description' => $this->getMetaContent($crawler, 'description'),
+                'canonical' => $this->getCanonical($crawler),
+                'favicon' => $this->getFavicon($crawler, $input),
+                'emails' => $this->findEmails($html),
+                'phones' => $this->findPhones($html),
+                'social_media' => $this->findSocialMedia($crawler),
+                'open_graph' => [
+                    'title' => $this->getMetaContent($crawler, 'og:title', 'property'),
+                    'description' => $this->getMetaContent($crawler, 'og:description', 'property'),
+                    'image' => $this->getMetaContent($crawler, 'og:image', 'property'),
+                ],
+            ];
+
+            Cache::put($cacheKey, $result, self::CACHE_TTL);
+            Log::info('WebsiteService: extraction success', ['url' => $input]);
+
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('WebsiteService: extraction failed', [
+                'url' => $input,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
     }
 
     private function getTitle(Crawler $crawler): ?string
@@ -79,7 +104,7 @@ class WebsiteService implements ExtractorInterface
         return array_values(array_unique($matches[0]));
     }
 
-     private function findSocialMedia(Crawler $crawler): array
+    private function findSocialMedia(Crawler $crawler): array
     {
         $platforms = ['facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'linkedin.com', 'youtube.com', 'tiktok.com'];
         $found = [];

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Services\Extractors\WebsiteService;
 use App\Services\Extractors\DomainService;
 use App\Services\Extractors\LocationService;
+use Illuminate\Support\Facades\Log;
 
 class CompanyInformationService
 {
@@ -17,23 +18,35 @@ class CompanyInformationService
 
     public function getCompanyInformation(string $domain): array
     {
+        Log::info('CompanyInformationService: aggregating company information', ['domain' => $domain]);
+
         $domainData = $this->safeExtract(fn () => $this->domainService->extract($domain));
 
         $websiteData = $this->safeExtract(fn () => $this->websiteService->extract("https://{$domain}"));
 
-       $locationData = $this->safeExtract(function () use ($domainData, $domain) {
-    $registrar = $domainData['data']['registrar'] ?? null;
+        $locationData = $this->safeExtract(function () use ($domainData, $domain) {
+            $registrar = $domainData['data']['registrar'] ?? null;
 
-    if ($registrar) {
-        try {
-            return $this->locationService->extract($registrar);
-        } catch (\Exception $e) {
-            // kalau gagal pakai registrar, coba fallback ke domain
-        }
-    }
+            if ($registrar) {
+                try {
+                    return $this->locationService->extract($registrar);
+                } catch (\Exception $e) {
+                    Log::info('CompanyInformationService: registrar location lookup failed, falling back to domain', [
+                        'registrar' => $registrar,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
-    return $this->locationService->extract($domain);
-    });
+            return $this->locationService->extract($domain);
+        });
+
+        Log::info('CompanyInformationService: aggregation complete', [
+            'domain' => $domain,
+            'website_success' => $websiteData['success'],
+            'domain_success' => $domainData['success'],
+            'location_success' => $locationData['success'],
+        ]);
 
         return [
             'website' => $websiteData,
