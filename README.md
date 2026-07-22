@@ -331,19 +331,19 @@ Berikut dokumentasi hasil pengujian endpoint menggunakan Postman beserta contoh 
 
 | Paper.id | YouTube |
 |----------|---------|
-| ![Website Paper.id](images/Challenge%201%20-%20Website%20Metadata%20(paper.id).jpeg) | ![Website YouTube](images/Challenge%201%20-%20Website%20Metadata%20(yotutube).jpeg) |
+| ![Website Paper.id](images/Challenge%201%20-%20Website%20Metadata%20(paper.id).jpeg) | ![Website YouTube](images/Challenge%201%20-%20Website%20Metadata%20(youtube).jpeg) |
 
 ### Challenge 2 - Domain Intelligence
 
 | Paper.id | Tokopedia |
 |----------|------------|
-| ![Domain Paper.id](images/Challenge%202%20-%20Domain%20Intelligence%20(paper.id).jpeg) | ![Domain Tokopedia](images/Challenge%202%20-%20Domain%20Intelligence%20(tokpedia).jpeg) |
+| ![Domain Paper.id](images/Challenge%202%20-%20Domain%20Intelligence%20(paper.id).jpeg) | ![Domain Tokopedia](images/Challenge%202%20-%20Domain%20Intelligence%20(tokopedia).jpeg) |
 
 ### Challenge 3 - Company Location Finder
 
 | PT Telkom Indonesia | Bank Central Asia |
 |---------------------|-------------------|
-| ![Location Telkom](images/Challenge%203%20-%20Company%20Location%20Finder%20(telkom).jpeg) | ![Location BCA](images/Challenge%203%20-%20Company%20Location%20Finder%20(BCA).jpeg) |
+|![Location Telkom](images/Challenge%203%20-%20Company%20Location%20Finder%20(TELKOM).jpeg) | ![Location BCA](images/Challenge%203%20-%20Company%20Location%20Finder%20(BCA).jpeg) |
 
 ### Final Integration
 
@@ -359,7 +359,7 @@ Berikut contoh log aplikasi yang menunjukkan proses request, proses ekstraksi da
 
 ## Video Presentasi
 
-Link video presentasi (YouTube, unlisted): `<>`
+Link video presentasi (YouTube, unlisted): [Tonton di sini](https://youtu.be/0iGQcv370LU?si=COYVk_kdvLc1WzT0)
 
 ## Teknologi
 
