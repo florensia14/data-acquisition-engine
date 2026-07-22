@@ -325,6 +325,7 @@ Beberapa hal yang kalau ada waktu lebih pengen saya lanjutin:
 - **Dokumentasi OpenAPI/Swagger** — biar endpoint-nya bisa dicoba langsung dari browser tanpa perlu Postman.
 
 ## Screenshot
+Berikut dokumentasi hasil pengujian endpoint menggunakan Postman beserta contoh application log yang dihasilkan selama proses ekstraksi data.
 
 ### Challenge 1 - Website Metadata Extractor
 
@@ -358,7 +359,7 @@ Berikut contoh log aplikasi yang menunjukkan proses request, proses ekstraksi da
 
 ## Video Presentasi
 
-Link video presentasi (YouTube, unlisted): `<tempel link di sini>`
+Link video presentasi (YouTube, unlisted): `<>`
 
 ## Teknologi
 
